@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Option Selector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .left,
+        .right {
+            width: 540;
+            height: 960;
+        }
+        
+        .left img {
+            width: 540px;
+            height: 960px;
+            object-fit: cover;
+        }
+
+        .right h3,
+        .right p {
+            margin-bottom: 1em;
+        }
+        
+        .right textarea {
+            width: 100%;
+            height: 80%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="left">
+        <img src="" alt="" id="daily">
+    </div>
+    <div class="right">
+        <h3>本工具用於整理OCR的結果，不具備線上存檔功能。</h3>
+        <p>
+            若您有發現選項OCR出錯的話，可以透過此工具更新選項。<br>
+            更新完成後按下「匯出」，將會出的檔案透過github pull-request回傳給該專案。<br>
+            選項必須以換行呈現，最後一個選項不換行。
+        </p>
+        <h2>Question Number: <span id="qidx"></span></h2>
+        <input type="number" id="qnum" />
+        <textarea name="" id="recognized" cols="30" rows="10"></textarea>
+        <button id="prv">上一個</button>
+        <button id="nxt">下一個</button>
+        <button id="upd">更新</button>
+        <button id="exp">匯出</button>
+    </div>
+    <script>
+        const qidx = document.querySelector('#qidx');
+        const qnum = document.querySelector('#qnum');
+        const daily = document.querySelector('#daily');
+        const recognized = document.querySelector('#recognized');
+        const prv = document.querySelector('#prv');
+        const nxt = document.querySelector('#nxt');
+        const upd = document.querySelector('#upd');
+        const exp = document.querySelector('#exp');
+
+        let idx = 0;
+        let dailyQquestion = [];
+        let dailyQquestionOption = [];
+        let myHeaders = new Headers();
+        myHeaders.append('pragma', 'no-cache');
+        myHeaders.append('cache-control', 'no-cache');
+
+        fetch('./dailyQuestion.json', {
+            cache: 'no-cache'
+        }).then(response => response.json()).then(json => dailyQquestion = json);
+        fetch('./dailyQuestionOption.json', {
+            cache: 'no-cache'
+        }).then(response => response.json()).then(json => dailyQquestionOption = json);
+
+        setTimeout(() => {
+            loadQuestion(0);
+            qnum.setAttribute('min', 0);
+            qnum.setAttribute('max', dailyQquestionOption.length);
+            qnum.addEventListener('input', (e) => loadQuestion(parseInt(e.target.value) - 1));
+            prv.addEventListener('click', () => loadQuestion(idx - 1));
+            nxt.addEventListener('click', () => loadQuestion(idx + 1));
+            upd.addEventListener('click', () => updateRecognized());
+            exp.addEventListener('click', () => exportJSON());
+
+            document.onkeydown = function(e) {
+                e = e || window.event;
+                console.log(e.which || e.keyCode);
+                switch (e.which || e.keyCode) {
+                    case 120:
+                        updateRecognized();
+                        break;
+                    case 33:
+                        loadQuestion(idx - 1);
+                        break;
+                    case 34:
+                        loadQuestion(idx + 1);
+                        break;
+                }
+            }
+        }, 1000);
+
+        function loadQuestion(i) {
+            idx = i || 0;
+            if (idx < 0 || idx >= dailyQquestionOption.length) return;
+            qidx.innerHTML = idx + 1;
+            daily.src = dailyQquestion[idx][0];
+            recognized.value = dailyQquestionOption[idx].recognized.join('\n');
+        }
+
+        function updateRecognized() {
+            dailyQquestionOption[idx].recognized = recognized.value.split('\n')
+        }
+
+        function exportJSON() {
+            const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(dailyQquestionOption));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute('href', dataStr);
+            dlAnchorElem.setAttribute('download', 'dailyQuestionOption.json');
+            dlAnchorElem.click();
+        }
+    </script>
+</body>
+
+</html>
